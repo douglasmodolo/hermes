@@ -1,0 +1,37 @@
+# Compiled / build output
+target/
+build/
+out/
+bin/
+*.class
+
+# Maven / Gradle
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+.gradle/
+gradle-app.setting
+
+# IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+
+# Logs & temp
+*.log
+logs/
+*.tmp
+
+# Env / secrets (never commit real credentials)
+.env
+*.local
+application-local.properties
+application-local.yml
+
+# OS
+.DS_Store
+Thumbs.db
