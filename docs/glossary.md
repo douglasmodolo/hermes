@@ -32,5 +32,28 @@ Os termos (headwords) ficam em inglês; as definições estão em português.
 - **Replication lag** — o atraso entre um DB primário e sua read replica.
 - **Cutover** — o momento em que você troca o tráfego do sistema/DB antigo para o novo
   (ex.: MySQL→Postgres).
+- **Circuit breaker** — corta chamadas a uma dependência que está falhando, para não
+  propagar a falha nem insistir no que já caiu.
+- **Exponential backoff** — retentar com esperas crescentes entre tentativas, para não
+  formar um retry storm que amplifica o incêndio.
+- **Fallback** — resposta degradada quando a dependência falha (ex.: "frete indisponível" +
+  valor padrão), em vez de um erro duro que trava o fluxo.
+- **Rate limiting / Throttling** — limitar requests por usuário/IP por unidade de tempo,
+  para proteger o downstream de um spike.
+- **Read replica** — cópia somente-leitura do DB primário para onde se roteiam leituras;
+  paga-se com replication lag.
+- **Canary deployment** — subir a versão nova para uma fração pequena do tráfego (1–5%) e
+  só avançar se as métricas de saúde seguirem boas.
+- **Blue-green deployment** — manter o ambiente antigo (blue) de pé enquanto o novo (green)
+  sobe; o load balancer volta ao blue na hora se o green falhar.
+- **CAP theorem** — sob partição de rede, você escolhe entre consistência e disponibilidade.
+- **PACELC** — extensão do CAP: mesmo sem partição (Else), há troca entre latência e
+  consistência.
+- **N+1 problem** — bug de ORM em que carregar N registros dispara 1+N queries por causa de
+  lazy fetch.
+- **Virtual Threads** — threads baratíssimas do Java 21 (Project Loom) que podem bloquear
+  sem o custo das threads de plataforma.
+- **SLI / SLO** — Service Level Indicator (métrica medida, ex.: % de requests não-5xx) e
+  Service Level Objective (a meta sobre ela, ex.: 99.9%).
 
 Adicione termos aqui à medida que o domínio cresce, para o naming ficar consistente.

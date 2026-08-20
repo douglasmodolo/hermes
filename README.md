@@ -63,6 +63,7 @@ real e (b) ser aplicado aqui, contra uma dor que você fabrica de propósito.
 | `docs/spec-driven-development.md` | Como fazer SDD direito — o template de spec e o workflow que você segue antes de codar. |
 | `docs/progress-journal.md` | A régua da sua evolução. Uma entrada por sessão. |
 | `docs/glossary.md` | Termos de fulfillment/logística em inglês, para a linguagem de domínio ficar consistente. |
+| `docs/dotnet-to-java.md` | Mapa de tradução .NET/Delphi → Java (a Pedra de Roseta). |
 
 ## Primeiros passos sugeridos
 

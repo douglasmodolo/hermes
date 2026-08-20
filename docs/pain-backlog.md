@@ -28,8 +28,8 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Where:** Catalog, Orders.
 - **Ideia de implementação:** uma única app Spring Boot, package-by-domain (não
   por camada). Mapeie os conceitos .NET que você conhece (DI container, controllers, EF)
-  para Spring (ApplicationContext, @RestController, JPA/Hibernate) — escreva esses
-  mapeamentos no seu journal.
+  para Spring (ApplicationContext, @RestController, JPA/Hibernate) — registre os
+  mapeamentos em `dotnet-to-java.md`.
 - **→ puxa a próxima:** agora você tem dados; faça-os doerem.
 
 ### Dor 2 — Queries lentas em escala (indexing)
@@ -40,6 +40,9 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Ideia de implementação:** escreva um script gerador de dados; meça uma query
   antes/depois de adicionar um index; aprenda a ler o plano de execução. Resista a adicionar
   um index às cegas — primeiro *veja* o full scan.
+- **Aprofundar (N+1 problem):** reproduza também o clássico do ORM — uma query que vira
+  1+N queries por causa de lazy fetch. Você já viu isso no EF; o Hibernate morde igual.
+  Veja o N+1 no log de SQL antes de resolvê-lo (fetch join, `@EntityGraph`, batch).
 - **→ puxa a próxima:** indexes ajudam mas o DB ainda está quente → cache.
 
 ### Dor 3 — Caching & invalidation
@@ -52,6 +55,9 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Ideia de implementação:** introduza Redis como um read cache com um TTL. A lição real é
   a invalidation: o que acontece quando o dado subjacente muda? Crie de propósito um bug de
   stale-read e então conserte.
+- **Aprofundar (TTL por volatilidade):** o TTL não é único. Dado que quase não muda
+  (metadados de product — nome, descrição) aceita TTL longo; dado volátil (price, stock)
+  exige TTL curto ou invalidation ativa. Modele os dois e sinta a diferença.
 - **→ puxa a próxima:** agora você está fazendo malabarismo com consistência → transactions.
 
 ---
@@ -113,6 +119,10 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Where:** Orders → Inventory.
 - **Ideia de implementação:** reproduza a falha em cascata. Este é o gancho emocional de
   tudo que é assíncrono a seguir. Meça como as threads se acumulam esperando.
+- **Aprofundar (Virtual Threads):** aproveite para entender a alavanca do Java 21 — Virtual
+  Threads (Project Loom). Onde no .NET você pensaria `async/await` para não prender thread,
+  o Java te dá threads baratíssimas que podem bloquear sem custo. Meça o pool de threads
+  empilhando com e sem Virtual Threads.
 - **→ puxa a próxima:** desacople-os → messaging.
 
 ### Dor 9 — Messaging event-driven
@@ -145,6 +155,11 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Ideia de implementação:** adicione timeouts primeiro (a correção mais barata), depois um
   circuit breaker, depois retries limitados com backoff. Prove cada um com uma falha que
   você injeta.
+- **Aprofundar (backoff e fallback):** o retry cru amplifica o incêndio — use **exponential
+  backoff** (esperas crescentes) para não formar retry storm. E entenda **fallback como
+  degradação graciosa**: se o cálculo de frete cai, não devolva erro duro — devolva um valor
+  padrão ou "frete temporariamente indisponível" e deixe o usuário seguir navegando. (Isto
+  fecha o loop com a dúvida de "banco cai → degradar, não parar" levantada na spec 01.)
 - **→ puxa a próxima:** agora empurre volume por ele → escalabilidade & carga.
 
 ---
@@ -171,9 +186,25 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Where:** Packing.
 - **Ideia de implementação:** modele as stations como workers concorrentes; gere um workload
   de pico; ache o gargalo por medição, não por chute. Conserte aquele que os dados apontam.
-- **→ puxa a próxima:** nunca imprimir um label duas vezes → labeling idempotente.
+  Considere Virtual Threads (Dor 8) para as stations concorrentes.
+- **→ puxa a próxima:** e quando a chamada de label é lenta e externa? → offload assíncrono.
 
-### Dor 14 — Geração de label idempotente
+### Dor 14 — Dependência lenta: offload assíncrono
+- **Tópico:** offload assíncrono de dependência lenta; request-reply vs fire-and-forget +
+  notificação; por que polling não escala.
+- **Fabricar:** o serviço (falso) de label demora minutos para responder (simule 3–4 min de
+  latência). O request do usuário fica preso esperando.
+- **Observe:** threads/conexões presas esperando; se você "resolve" com polling a cada X
+  segundos, multiplique por milhares de usuários e veja o custo de rede/CPU explodir.
+- **Where:** Packing → serviço de label; Notifications.
+- **Ideia de implementação:** em vez de bloquear ou fazer polling, a API só **enfileira**
+  ("label do parcel #123 pendente") e responde na hora "recebido, aviso quando pronto". Um
+  **worker** consome a fila, chama a API lenta com calma, salva o resultado e dispara um
+  evento; o usuário é **notificado** (push/e-mail/status via WebSocket). Liga-se à Dor 9
+  (messaging).
+- **→ puxa a próxima:** repetir a chamada ao dar timeout gera label duplicado → idempotência.
+
+### Dor 15 — Geração de label idempotente
 - **Tópico:** idempotency numa integração, efeitos at-least-once vs exactly-once.
 - **Fabricar:** repita um request de label após um timeout; dois labels são gerados.
 - **Observe:** o label duplicado — um bug real e caro no fulfillment.
@@ -183,7 +214,7 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **→ puxa a próxima:** o conteúdo do packing precisa bater com o do picking → consistência
   cross-domain.
 
-### Dor 15 — Consistência: packed = picked = ordered
+### Dor 16 — Consistência: packed = picked = ordered
 - **Tópico:** consistência cross-service, reconciliation.
 - **Fabricar:** force um mismatch — item com picking feito mas não com packing, ou packing a
   mais.
@@ -197,17 +228,22 @@ implementação (uma direção de partida — **não** uma solução para copiar
 
 ## Fase 4 — Dados em escala
 
-### Dor 16 — Carga & escalabilidade
+### Dor 17 — Carga & escalabilidade
 - **Tópico:** escalabilidade, carga artificial, horizontal scaling.
 - **Fabricar:** gere milhões de users/orders falsos e tráfego sustentado.
-- **Observe:** a primeira coisa a cair sob carga real.
+- **Observe:** a primeira coisa a cair sob carga real. Repare que auto-scaling tem delay —
+  ele não responde a tempo do pico, e um monte de requests sofre no intervalo.
 - **Where:** Catalog, Orders, Packing.
 - **Ideia de implementação:** use um load generator; escale um serviço horizontalmente;
   descubra o que quebra quando você tem N instâncias (shared state, sticky sessions,
   conexões de DB).
+- **Aprofundar (throttling / rate limiting):** escalar não é a única resposta. Proteja o
+  downstream com **rate limiting / throttling** — limite requests por usuário/IP por segundo
+  para não estourar o banco sob spike (cenário Black Friday). Sinta a diferença entre
+  atrasar o problema (só escalar) e contê-lo (throttling + async).
 - **→ puxa a próxima:** o MySQL compartilhado agora é o teto → migre o DB.
 
-### Dor 17 — Migração de banco (MySQL → Postgres, na mão) ⭐
+### Dor 18 — Migração de banco (MySQL → Postgres, na mão) ⭐
 - **Tópico:** migração de banco, o abismo entre teoria e realidade.
 - **Fabricar:** o MySQL não dá conta / você precisa de features que ele não tem. Migre para
   Postgres.
@@ -215,20 +251,24 @@ implementação (uma direção de partida — **não** uma solução para copiar
   dados, estratégia de cutover.
 - **Where:** cross-cutting.
 - **Ideia de implementação:** faça **na mão**, de propósito. Esta dor só existe porque você
-  começou no MySQL de propósito. Planeje a migração, execute, cuide dos dados. É a lição que
-  o vídeo apontou como valiosíssima e muito comum para arquitetos de verdade.
+  começou no MySQL de propósito. Planeje a migração, execute, cuide dos dados. É a lição
+  apontada como valiosíssima e muito comum para arquitetos de verdade.
 - **→ puxa a próxima:** um DB ainda não é suficiente → replication/partitioning.
 
-### Dor 18 — Replication & partitioning
+### Dor 19 — Replication & partitioning
 - **Tópico:** read replicas, sharding, partitioning.
 - **Fabricar:** a carga de leitura satura o primary; uma table cresce além do confortável.
 - **Observe:** replication lag; o trade-off de ler stale de uma replica.
 - **Where:** cross-cutting.
 - **Ideia de implementação:** adicione uma read replica e roteie leituras; então particione
   uma table grande. Sinta os trade-offs de consistência que você acabou de assinar.
+- **Aprofundar (CAP / PACELC):** é aqui que os teoremas deixam de ser slide e viram
+  concretos. Sob partição (CAP) você escolhe consistência ou disponibilidade; e mesmo sem
+  partição (PACELC) você troca latência por consistência ao ler de uma replica. Nomeie qual
+  ponto você escolheu e por quê.
 - **→ puxa a próxima:** search num DB relacional para de escalar → search dedicada.
 
-### Dor 19 — Search que escala (Elasticsearch)
+### Dor 20 — Search que escala (Elasticsearch)
 - **Tópico:** search engines, indexing, manter dois datastores em sync.
 - **Fabricar:** a full-text search de catálogo no DB relacional fica lenta e desajeitada.
 - **Observe:** a complexidade e latência da query; então o problema de sync entre o DB e o
@@ -244,7 +284,7 @@ implementação (uma direção de partida — **não** uma solução para copiar
 
 ## Fase 5 — Enxergar o sistema
 
-### Dor 20 — Observability & tracing
+### Dor 21 — Observability & tracing
 - **Tópico:** distributed tracing, metrics, structured logs.
 - **Fabricar:** um único checkout agora cruza 5+ serviços e algo está lento, mas ninguém
   sabe onde.
@@ -252,17 +292,55 @@ implementação (uma direção de partida — **não** uma solução para copiar
 - **Where:** Observability (cross-cutting).
 - **Ideia de implementação:** adicione correlation IDs, depois distributed tracing, depois
   metrics. A vitória é conseguir apontar o hop lento exato.
+- **Aprofundar (métricas que importam):** separe **business metrics** (orders/min, packs/hora)
+  de **resource metrics** (CPU, memória, conexões). Defina um SLI de disponibilidade — ex.:
+  % de requests não-5xx (1xx/2xx/3xx/4xx contam como "saudáveis", 5xx não) — e entenda o
+  cálculo por trás de "99.9%". Saiba quais métricas disparam a decisão de scale in / scale
+  out.
 - **→ puxa a próxima:** agora você consegue ver a latência → vá caçá-la.
 
-### Dor 21 — Caça à latência
+### Dor 22 — Caça à latência
 - **Tópico:** análise de latência, tail latencies, otimização direcionada.
 - **Fabricar:** o P99 do checkout está alto mesmo que as médias pareçam boas.
 - **Observe:** a cauda — o 1% dos requests que são terríveis, e por quê.
 - **Where:** Orders, Packing.
-- **Ideia de implementação:** use o tracing da Dor 20 para achar a causa da cauda; conserte
+- **Ideia de implementação:** use o tracing da Dor 21 para achar a causa da cauda; conserte
   aquela uma coisa; prove que moveu o P99. Aprenda por que médias mentem.
 - **→ puxa a próxima:** qualquer coisa nova que você quiser aprender — adicione uma dor e
   siga em frente.
+
+---
+
+## Dores parkeadas (dependem de pré-requisitos)
+
+Estas já estão no radar, mas só se tornam acionáveis depois que o sistema tiver os
+pré-requisitos abaixo. Não pule para elas antes disso.
+
+### Dor 23 — Deploy sem downtime (canary / blue-green / rollback)
+- **Tópico:** estratégias de release, deploy progressivo, rollback automático.
+- **Pré-requisito:** múltiplos serviços/instâncias (Dor 7+) e observabilidade com métricas
+  de saúde (Dor 21) — o rollback é disparado por métrica.
+- **Fabricar:** suba uma versão nova que degrada as métricas; veja o impacto se ela for para
+  100% do tráfego de uma vez.
+- **Where:** cross-cutting (entrega).
+- **Ideia de implementação:** direcione só 1–5% do tráfego para a versão nova (**canary**);
+  se as métricas de saúde degradam, **rollback automático** para a última versão estável;
+  entenda também **blue-green** (ambiente antigo de pé enquanto o novo sobe; o load balancer
+  aponta de volta na hora se o novo falhar). A primeira ação num deploy ruim é restaurar o
+  serviço, não investigar o código.
+- **→ puxa a próxima:** operar em produção puxa segurança, custo e mais observabilidade.
+
+### Dor 24 — Retenção & expurgo de dados
+- **Tópico:** data lifecycle, retention, archival, purga de dados antigos.
+- **Pré-requisito:** volume de dados alto e sustentado (Dor 17+); idealmente já com
+  partitioning (Dor 19).
+- **Fabricar:** deixe orders/eventos antigos acumularem até tabelas e índices ficarem
+  pesados; sinta queries e backups degradarem.
+- **Where:** cross-cutting (dados).
+- **Ideia de implementação:** defina critérios de retenção (o que guardar, por quanto tempo);
+  arquive o frio e expurgue o que não precisa mais estar quente. Decida entre soft-delete,
+  archival para storage barato e purge definitivo — e as implicações de cada um.
+- **→ puxa a próxima:** conforme novas dores surgirem, adicione-as abaixo.
 
 ---
 

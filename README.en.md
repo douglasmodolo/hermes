@@ -65,6 +65,7 @@ applied here, against a pain you deliberately manufacture.
 | `docs/spec-driven-development.md` | How to do SDD properly — the spec template and workflow you follow before coding. |
 | `docs/progress-journal.md` | The ruler of your evolution. One entry per session. |
 | `docs/glossary.md` | Fulfillment/logistics terms in English, so the domain language stays consistent. |
+| `docs/dotnet-to-java.md` | .NET/Delphi → Java translation map (the Rosetta Stone). |
 
 ## Suggested first steps
 
