@@ -56,10 +56,10 @@
 - quantity <= 0: rejeitar (4xx).
 - (Consciente e fora de escopo agora):
   - Banco cai em RUNTIME (app de pé, MySQL morre no meio): degradação graciosa,
-    circuit breaker, timeouts → é a Dor #11 (Resiliência) e a Dor #8 (acoplamento
+    circuit breaker, timeouts → é a Dor #18 (Resiliência) e a Dor #14 (acoplamento
     síncrono). NÃO tratamos aqui; adicionar agora roubaria o aprendizado dessas dores.
-  - Submit duplicado do mesmo order → duplicata: é a Dor #10 (idempotency). NÃO tratamos.
-  - Health check / observabilidade (/health): é a Dor #20. Por ora o "aviso" é o log.
+  - Submit duplicado do mesmo order → duplicata: é a Dor #16 (idempotency). NÃO tratamos.
+  - Health check / observabilidade (/health): é a Dor #28. Por ora o "aviso" é o log.
 
 ## 6. Trade-offs aceitos
 - Monólito + MySQL nativo + chamadas síncronas in-process: simples de propósito.
@@ -69,9 +69,9 @@
   se reflete em orders antigos (que é justamente o comportamento correto).
 - Não tratar idempotency/concorrência/consistência/resiliência agora — são dores futuras;
   tratá-las aqui seria gold-plating e roubaria o aprendizado delas.
-- MySQL nativo (não Docker): resetar o banco depois (Dor #2, 50–100M linhas) será mais
+- MySQL nativo (não Docker): resetar o banco depois (Dor #5, 50–100M linhas) será mais
   chato do que matar um container — custo aceito de propósito, para não adotar Docker pela
-  metade antes de ele ser uma dor deliberada.
+  metade antes de ele ser uma dor deliberada (Dor #3).
 - Devolver DTO em vez da entity JPA: um pouco mais de código (mapeamento), em troca de
   desacoplar o contrato da API do schema do banco e evitar vazamento/lazy-loading.
 

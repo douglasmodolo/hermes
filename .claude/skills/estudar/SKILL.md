@@ -110,6 +110,6 @@ mais valioso).
   escritos em português (pt-BR), mas os nomes de domínio e termos técnicos (Packing, saga,
   SKU, ...) permanecem em inglês, para ficarem consistentes com o código.
 - Arquitetura emerge das dores. Monolito + MySQL primeiro; distribuído só quando a dor
-  exigir. A migração MySQL→Postgres (Pain #17) é deliberada — não sugira começar no banco
+  exigir. A migração MySQL→Postgres (Dor #12) é deliberada — não sugira começar no banco
   "certo".
 - Respeite a senioridade dele. Sem infantilizar, sem encher de disclaimer.

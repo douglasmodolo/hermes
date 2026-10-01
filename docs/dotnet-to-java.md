@@ -40,12 +40,12 @@ journal", consolidada aqui). Os termos técnicos ficam em inglês; a explicaçã
   explícito no EF; entender isso evita surpresas de "por que meu update não persistiu".
 - **Lazy vs Eager fetch e o N+1 problem:** o clássico "uma query virou 1+N queries". No EF
   você já viu isso; no Hibernate ele morde igual. Reproduzir e resolver o N+1 é parte da
-  Dor #2.
+  Dor #5.
 - **Streams vs LINQ:** mesma ideia (filter/map/reduce/collect), sintaxe diferente. `Collectors`
   ~ os métodos terminais do LINQ.
 - **Virtual Threads (Project Loom):** o grande diferencial do Java 21. Onde no C# você
   pensaria `async/await` para não bloquear thread, o Java te dá threads baratíssimas que
-  podem bloquear sem custo. Alavanca direta nas Dores #8 e #13 (threads empilhando,
+  podem bloquear sem custo. Alavanca direta nas Dores #14 e #20 (threads empilhando,
   throughput).
 - **Concorrência clássica:** `synchronized`, `lock`, `volatile`, `ExecutorService`. O
   Singleton "com synchronized" que você lembra do Java continua existindo, mas hoje raramente
@@ -56,7 +56,7 @@ journal", consolidada aqui). Os termos técnicos ficam em inglês; a explicaçã
 - **JDK:** LTS 21 (não perca tempo com o 8).
 - **IDE:** IntelliJ IDEA.
 - **Build:** Maven (padrão de mercado; escolha do Hermes) ou Gradle.
-- **Banco:** MySQL (início do Hermes, de propósito), depois Postgres (Dor #17).
+- **Banco:** MySQL (início do Hermes, de propósito), depois Postgres (Dor #12).
 
 > Nota: mapeamentos vindos de material de estudo/roadmaps foram abstraídos aqui. Os projetos
 > descartáveis desses roadmaps (CSV processor, cashback, etc.) **não** são usados — o Hermes
